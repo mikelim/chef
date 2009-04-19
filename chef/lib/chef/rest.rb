@@ -160,6 +160,11 @@ class Chef
       else
         raise ArgumentError, "You must provide :GET, :PUT, :POST or :DELETE as the method"
       end
+
+      if url.userinfo
+        user, password = url.userinfo.split(':')
+        req.basic_auth(user, password) 
+      end
       
       Chef::Log.debug("Sending HTTP Request via #{req.method} to #{req.path}")
       res = nil
@@ -222,7 +227,11 @@ class Chef
         if res['set-cookie']
           @cookies["#{url.host}:#{url.port}"] = res['set-cookie']
         end
-        run_request(:GET, create_url(res['location']), false, limit - 1, raw)
+        new_url = create_url(res['location'])
+        if new_url.host == url.host && url.userinfo
+          new_url.userinfo = url.userinfo
+        end
+        run_request(:GET, new_url, false, limit - 1, raw)
       else
         res.error!
       end
